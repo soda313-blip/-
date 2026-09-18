@@ -1,0 +1,6 @@
+{
+  "name": "영문법 뚫기",
+  "description": "초등학생을 위한 대포 발사 성문 파괴 영문법 퀴즈 게임. 올바른 문법 포환을 장전하고 발사하여 10개의 성문을 뚫어보세요!",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

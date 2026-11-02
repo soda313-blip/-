@@ -6,15 +6,19 @@ interface RealisticCastleWallProps {
   gateCracks: number; // 0 to 10
   isDamaged: boolean; // hit state
   status: 'idle' | 'firing' | 'hit' | 'miss';
+  isDoorDown?: boolean;
 }
 
 export default function RealisticCastleWall({
   children,
   gateCracks,
+  isDamaged,
   status,
+  isDoorDown: forcedDoorDown,
 }: RealisticCastleWallProps) {
   const isGreenExplosion = status === 'hit';
   const isRedExplosion = status === 'miss';
+  const isDoorDown = forcedDoorDown !== undefined ? forcedDoorDown : (status === 'hit' || isDamaged || gateCracks >= 10);
 
   return (
     <div className="relative w-full max-w-2xl mx-auto z-10 flex flex-col items-center select-none overflow-visible">
@@ -389,31 +393,87 @@ export default function RealisticCastleWall({
         {/* ======================================================== */}
         <div className="mt-3 relative flex flex-col items-center justify-center">
           {/* Arched Castle Gateway Assembly */}
-          <div className="relative w-44 sm:w-56 h-24 sm:h-28 flex flex-col items-center justify-end overflow-hidden drop-shadow-md">
+          <div className="relative w-48 sm:w-60 h-28 sm:h-32 flex flex-col items-center justify-end overflow-hidden drop-shadow-lg">
             {/* Outer Dark Charcoal Stone Arch Surround */}
-            <div className="absolute inset-0 rounded-t-full bg-[#524941] border-3 border-[#241e1a] shadow-inner flex flex-col items-center justify-end" />
+            <div className="absolute inset-0 rounded-t-full bg-[#3d342d] border-4 border-[#241e1a] shadow-inner flex flex-col items-center justify-end overflow-hidden">
+              {/* Stone Voussoirs / Arch Keystone Accents */}
+              <div className="absolute top-0 inset-x-0 h-4 flex justify-between px-4 opacity-70">
+                <div className="w-3 h-3 border-r-2 border-[#241e1a]" />
+                <div className="w-4 h-4 bg-[#4a4037] border-x-2 border-b-2 border-[#241e1a] rounded-b-sm" />
+                <div className="w-3 h-3 border-l-2 border-[#241e1a]" />
+              </div>
+            </div>
 
-            {/* Inner Arched Wooden Door Panels (Warm Wood with Center Split) */}
-            <div className="relative w-[88%] h-[90%] rounded-t-full bg-[#bd9a66] border-x-3 border-t-3 border-[#241e1a] overflow-hidden flex shadow-inner">
+            {/* Castle Interior / Gateway Tunnel (Revealed when door goes fully down) */}
+            <div className="absolute inset-x-2 bottom-0 h-[88%] rounded-t-full bg-gradient-to-b from-[#18110b] via-[#24170e] to-[#120b06] border-x-2 border-t-2 border-[#1c1510] overflow-hidden flex flex-col items-center justify-between p-2 shadow-inner">
+              {/* Stone Flagstone Floor & Hallway Perspective */}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/30 via-amber-950/20 to-black/80 pointer-events-none" />
+
+              {/* Two Flickering Torches inside the castle hall */}
+              <div className="w-full flex items-center justify-between px-2 pt-1 z-10">
+                <div className="flex flex-col items-center animate-bounce">
+                  <span className="text-sm">🔥</span>
+                  <div className="w-1.5 h-3 bg-stone-700 rounded-xs" />
+                </div>
+                <div className="text-[10px] sm:text-xs font-jua text-yellow-300 font-bold bg-black/70 px-2.5 py-0.5 rounded-full border border-yellow-500/50 shadow-md">
+                  성문 돌파 완료! ⚔️
+                </div>
+                <div className="flex flex-col items-center animate-bounce">
+                  <span className="text-sm">🔥</span>
+                  <div className="w-1.5 h-3 bg-stone-700 rounded-xs" />
+                </div>
+              </div>
+
+              {/* Warm Hallway Light & Castle Courtyard Road */}
+              <div className="relative z-10 text-center pb-1">
+                <div className="text-[11px] font-jua text-amber-200 tracking-wide drop-shadow flex items-center gap-1 justify-center">
+                  <span>🏰</span>
+                  <span>성 안으로 진입 성공!</span>
+                  <span>✨</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Suspension Iron Chains on sides */}
+            <div className="absolute top-2 left-3 w-1 h-20 bg-stone-700 border-x border-[#1a1410] z-25 opacity-80" />
+            <div className="absolute top-2 right-3 w-1 h-20 bg-stone-700 border-x border-[#1a1410] z-25 opacity-80" />
+
+            {/* The Heavy Wooden Castle Gate Door Panels that Go FULLY DOWN */}
+            <motion.div
+              initial={false}
+              animate={{
+                y: isDoorDown ? '108%' : '0%',
+              }}
+              transition={{
+                type: 'spring',
+                stiffness: 90,
+                damping: 14,
+                mass: 1.1,
+              }}
+              className="relative w-[90%] h-[90%] rounded-t-full bg-[#bd9a66] border-x-3 border-t-3 border-[#241e1a] overflow-hidden flex shadow-2xl z-20 origin-bottom"
+            >
               {/* Left Door Leaf */}
               <div className="w-1/2 h-full border-r-2 border-[#241e1a] bg-gradient-to-r from-[#ab8857] via-[#bd9a66] to-[#af8d5a] flex flex-col justify-between p-1">
-                {/* Wood Grains */}
                 <div className="w-0.5 h-full bg-[#8c6b3e]/30 mx-auto" />
+                <div className="w-2 h-2 rounded-full bg-[#241e1a] mx-auto shadow" />
               </div>
 
               {/* Right Door Leaf */}
               <div className="w-1/2 h-full bg-gradient-to-r from-[#bd9a66] via-[#c6a470] to-[#ad8a59] flex flex-col justify-between p-1">
-                {/* Wood Grains */}
                 <div className="w-0.5 h-full bg-[#8c6b3e]/30 mx-auto" />
+                <div className="w-2 h-2 rounded-full bg-[#241e1a] mx-auto shadow" />
               </div>
 
-              {/* Horizontal Iron Strap Crossbar (As in reference image) */}
-              <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 h-4 bg-[#7a7b80] border-y-2 border-[#241e1a] shadow flex items-center justify-around px-2">
+              {/* Horizontal Iron Strap Crossbar */}
+              <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 h-4.5 bg-[#72747a] border-y-2 border-[#241e1a] shadow flex items-center justify-around px-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#241e1a]" />
                 <div className="w-1.5 h-1.5 rounded-full bg-[#241e1a]" />
                 <div className="w-1.5 h-1.5 rounded-full bg-[#241e1a]" />
                 <div className="w-1.5 h-1.5 rounded-full bg-[#241e1a]" />
               </div>
+
+              {/* Iron Ring Door Knocker */}
+              <div className="absolute top-1/2 translate-y-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-[#241e1a] bg-[#4a4744]/60 pointer-events-none" />
 
               {/* Procedural Stone & Wood Cracks (Deepening with each hit) */}
               {gateCracks > 0 && (
@@ -422,7 +482,6 @@ export default function RealisticCastleWall({
                   viewBox="0 0 100 80"
                   fill="none"
                 >
-                  {/* Center Split Fracture */}
                   <path
                     d="M 50,10 L 48,25 L 53,40 L 47,55 L 51,75"
                     stroke="#000000"
@@ -436,7 +495,6 @@ export default function RealisticCastleWall({
                     strokeLinecap="round"
                   />
 
-                  {/* Left Impact Branch (Cracks >= 3) */}
                   {gateCracks >= 3 && (
                     <path
                       d="M 48,25 L 32,35 L 20,30 L 15,48"
@@ -446,7 +504,6 @@ export default function RealisticCastleWall({
                     />
                   )}
 
-                  {/* Right Impact Branch (Cracks >= 5) */}
                   {gateCracks >= 5 && (
                     <path
                       d="M 53,40 L 68,48 L 80,42 L 88,60"
@@ -456,7 +513,6 @@ export default function RealisticCastleWall({
                     />
                   )}
 
-                  {/* Catastrophic Gateway Rupture (Cracks >= 8) */}
                   {gateCracks >= 8 && (
                     <path
                       d="M 28,15 L 42,32 L 62,28 L 78,16"
@@ -467,7 +523,10 @@ export default function RealisticCastleWall({
                   )}
                 </svg>
               )}
-            </div>
+            </motion.div>
+
+            {/* Threshold Stone Beam */}
+            <div className="absolute bottom-0 inset-x-0 h-2 bg-[#2d251e] border-t border-[#1a1410] z-25" />
           </div>
         </div>
 

@@ -18,6 +18,10 @@ interface GameStageProps {
   showKoreanHint: boolean;
   onToggleKoreanHint: () => void;
   screenShake: boolean;
+  studentName?: string;
+  playCount?: number;
+  correctCount?: number;
+  wrongCount?: number;
 }
 
 export default function GameStage({
@@ -33,6 +37,10 @@ export default function GameStage({
   showKoreanHint,
   onToggleKoreanHint,
   screenShake,
+  studentName,
+  playCount,
+  correctCount = 0,
+  wrongCount = 0,
 }: GameStageProps) {
   // Split sentence around the highlighted word to render a stylish highlight badge
   const renderSentenceWithHighlight = () => {
@@ -117,11 +125,35 @@ export default function GameStage({
         </div>
       </div>
 
+      {/* Live Gameplay Tracker: Name, Play Count, Correct Count, Wrong Count */}
+      <div className="w-full flex items-center justify-between px-3 py-1 mb-1.5 rounded-xl bg-stone-950/80 border border-amber-900/60 text-xs font-jua z-10 text-stone-300">
+        <div className="flex items-center gap-2">
+          <span className="text-amber-300 font-bold">학생: {studentName || '익명 학생'}</span>
+          {playCount !== undefined && (
+            <span className="text-stone-400">({playCount}회차 플레이)</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <span className="text-emerald-400 font-bold flex items-center gap-1">
+            <span>⭕</span> 정답: {correctCount}
+          </span>
+          <span className="text-rose-400 font-bold flex items-center gap-1">
+            <span>❌</span> 오답: {wrongCount}
+          </span>
+          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-emerald-300/90 bg-emerald-950/70 px-2 py-0.5 rounded-md border border-emerald-600/50">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            구글 시트 연동됨
+          </span>
+        </div>
+      </div>
+
       {/* Center Top: The Realistic Medieval Castle Fortress Wall with Question Parchment Scroll */}
       <RealisticCastleWall
         gateCracks={gateCracks}
         isDamaged={fireStatus === 'hit'}
         status={fireStatus}
+        isDoorDown={fireStatus === 'hit'}
       >
         {/* Authentic Royal Parchment Scroll for the Question */}
         <div className="relative bg-gradient-to-b from-[#fef8e7] via-[#f7ebd0] to-[#eedcb5] text-stone-900 rounded-xl sm:rounded-2xl p-3 sm:p-4 border-2 border-amber-400/80 shadow-[0_4px_12px_rgba(0,0,0,0.35)] flex flex-col items-center text-center">

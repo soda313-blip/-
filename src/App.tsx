@@ -5,6 +5,7 @@ import GameStage from './components/GameStage';
 import CannonballButtons from './components/CannonballButtons';
 import FeedbackBanner from './components/FeedbackBanner';
 import ResultScreen from './components/ResultScreen';
+import GoogleSheetModal from './components/GoogleSheetModal';
 import { Difficulty, GameScreen, Question, GameStats, UserAnswerRecord } from './types';
 import { getRandomQuestions } from './data/grammarQuestions';
 import {
@@ -15,8 +16,17 @@ import {
   playCannonShot,
   playGateHitSound,
   playBounceMissSound,
-  playWallRepairedSound,
 } from './utils/sound';
+import {
+  SheetRecord,
+  getStoredStudentName,
+  setStoredStudentName,
+  getStudentPlayCount,
+  incrementStudentPlayCount,
+  formatCurrentTimestamp,
+  saveRecordToHistory,
+  sendRecordToGoogleSheet,
+} from './utils/googleSheets';
 
 export default function App() {
   const [screen, setScreen] = useState<GameScreen>('start');
@@ -27,6 +37,15 @@ export default function App() {
   const [streak, setStreak] = useState(0);
   const [records, setRecords] = useState<UserAnswerRecord[]>([]);
   const [gateCracks, setGateCracks] = useState(0);
+
+  // Student & Google Sheet states
+  const [studentName, setStudentName] = useState(() => getStoredStudentName());
+  const [playCount, setPlayCount] = useState(() => getStudentPlayCount(getStoredStudentName()));
+  const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
+  const [sheetRecord, setSheetRecord] = useState<SheetRecord | undefined>(undefined);
+  const [sheetStatus, setSheetStatus] = useState<{ success: boolean; message: string } | undefined>(
+    undefined
+  );
 
   // Animation & Feedback States
   const [isFiring, setIsFiring] = useState(false);
@@ -56,9 +75,16 @@ export default function App() {
     }
   };
 
+  const handleUpdateStudentName = (name: string) => {
+    setStudentName(name);
+    setStoredStudentName(name);
+    setPlayCount(getStudentPlayCount(name));
+  };
+
   // Start a new game session
   const handleStartGame = (diff: Difficulty) => {
     setDifficulty(diff);
+    // getRandomQuestions returns 10 questions with shuffled options (random 1, 2, 3, 4 position)
     const selected = getRandomQuestions(diff, 10);
     setQuestions(selected);
     setCurrentIndex(0);
@@ -71,6 +97,8 @@ export default function App() {
     setSelectedOption(null);
     setShowFeedback(false);
     setShowKoreanHint(false);
+    setSheetRecord(undefined);
+    setSheetStatus(undefined);
     setScreen('playing');
   };
 
@@ -122,7 +150,7 @@ export default function App() {
           },
         ]);
 
-        // Show feedback modal so student can review explanation after explosion is seen
+        // Show feedback modal so student can review explanation while door is down
         setTimeout(() => {
           setShowFeedback(true);
         }, 750);
@@ -140,15 +168,33 @@ export default function App() {
     setSelectedOption(null);
     setShowKoreanHint(false);
 
-    // Wall is freshly repaired for the new question, clearing lingering fractures
-    if (gateCracks > 0) {
-      playWallRepairedSound();
-    }
-    setGateCracks(0);
-
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex((prev) => prev + 1);
     } else {
+      // Game finished! Calculate stats, update student play count, and log to Google Sheet
+      const finalRecords = records;
+      const finalCorrect = finalRecords.filter((r) => r.isCorrect).length;
+      const finalWrong = finalRecords.filter((r) => !r.isCorrect).length;
+
+      const nextPlayCount = incrementStudentPlayCount(studentName);
+      setPlayCount(nextPlayCount);
+
+      const newRecord: SheetRecord = {
+        timestamp: formatCurrentTimestamp(),
+        name: studentName,
+        play_count: nextPlayCount,
+        correct_count: finalCorrect,
+        wrong_count: finalWrong,
+      };
+
+      setSheetRecord(newRecord);
+      saveRecordToHistory(newRecord);
+
+      // Send to Google Sheets Apps Script Web App
+      sendRecordToGoogleSheet(newRecord).then((res) => {
+        setSheetStatus(res);
+      });
+
       setScreen('result');
     }
   };
@@ -165,7 +211,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleGlobalSpace);
     return () => window.removeEventListener('keydown', handleGlobalSpace);
-  }, [screen, showFeedback, currentIndex, questions.length, gateCracks]);
+  }, [screen, showFeedback, currentIndex, questions.length, gateCracks, records, studentName]);
 
   // Return to start screen
   const handleGoHome = () => {
@@ -201,6 +247,9 @@ export default function App() {
 
   const currentQuestion = questions[currentIndex];
 
+  const correctCount = records.filter((r) => r.isCorrect).length;
+  const wrongCount = records.filter((r) => !r.isCorrect).length;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-950 via-amber-950/40 to-stone-950 text-stone-100 flex flex-col justify-between select-none">
       {/* Top Header */}
@@ -211,11 +260,24 @@ export default function App() {
         difficulty={screen !== 'start' ? difficulty : undefined}
         score={score}
         showInGame={screen === 'playing'}
+        studentName={studentName}
+        playCount={playCount + 1}
+        correctCount={correctCount}
+        wrongCount={wrongCount}
+        onOpenSheetModal={() => setIsSheetModalOpen(true)}
       />
 
       {/* Main Screen Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 w-full">
-        {screen === 'start' && <StartScreen onStartGame={handleStartGame} />}
+        {screen === 'start' && (
+          <StartScreen
+            studentName={studentName}
+            onUpdateStudentName={handleUpdateStudentName}
+            playCount={playCount}
+            onOpenSheetModal={() => setIsSheetModalOpen(true)}
+            onStartGame={handleStartGame}
+          />
+        )}
 
         {screen === 'playing' && currentQuestion && (
           <div className="w-full max-w-4xl flex flex-col items-center">
@@ -236,6 +298,10 @@ export default function App() {
                 setShowKoreanHint(!showKoreanHint);
               }}
               screenShake={screenShake}
+              studentName={studentName}
+              playCount={playCount + 1}
+              correctCount={correctCount}
+              wrongCount={wrongCount}
             />
 
             {/* The 4 Cannonball Choice Buttons (하단) */}
@@ -264,6 +330,11 @@ export default function App() {
         {screen === 'result' && (
           <ResultScreen
             stats={gameStats}
+            studentName={studentName}
+            playCount={playCount}
+            sheetRecord={sheetRecord}
+            sheetStatus={sheetStatus}
+            onOpenSheetModal={() => setIsSheetModalOpen(true)}
             onRetry={() => handleStartGame(difficulty)}
             onSelectDifficulty={() => setScreen('start')}
           />
@@ -272,8 +343,14 @@ export default function App() {
 
       {/* Footer info banner */}
       <footer className="w-full py-2 text-center text-xs text-amber-300/60 font-jua">
-        영문법 뚫기 © 초등 수업 집중도 UP 영문법 퀴즈 배틀
+        영문법 뚫기 © 초등학교 5학년 영어 단어 · 품사 퀴즈 배틀 & 구글 시트 성적 연동
       </footer>
+
+      {/* Google Sheet Setup Modal */}
+      <GoogleSheetModal
+        isOpen={isSheetModalOpen}
+        onClose={() => setIsSheetModalOpen(false)}
+      />
 
       {/* Quit to Home Confirmation Modal */}
       {showQuitConfirm && (

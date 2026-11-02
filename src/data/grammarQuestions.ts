@@ -676,11 +676,24 @@ export const GRAMMAR_QUESTIONS: Question[] = [
 
 export function getRandomQuestions(difficulty: Difficulty, count: number = 10): Question[] {
   const filtered = GRAMMAR_QUESTIONS.filter((q) => q.difficulty === difficulty);
-  // Shuffle array using Fisher-Yates
+  // Shuffle questions array using Fisher-Yates
   const shuffled = [...filtered];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return shuffled.slice(0, count);
+  // Shuffle options inside each question so that the correct answer is uniformly distributed among 1, 2, 3, 4
+  return shuffled.slice(0, count).map((q) => {
+    const shuffledOptions = [...q.options];
+    for (let i = shuffledOptions.length - 1; i > 0; i--) {
+      const k = Math.floor(Math.random() * (i + 1));
+      const temp = shuffledOptions[i];
+      shuffledOptions[i] = shuffledOptions[k];
+      shuffledOptions[k] = temp;
+    }
+    return {
+      ...q,
+      options: shuffledOptions,
+    };
+  });
 }
